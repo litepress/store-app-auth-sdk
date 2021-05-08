@@ -65,7 +65,7 @@ final class WC_AM_Client_2_8 {
     private $wc_am_settings_title              = '';
     private $wc_am_software_version            = '';
 
-    public function __construct( $file, $product_id, $software_version, $plugin_or_theme, $api_url, $software_title = '', $text_domain = '' ) {
+    public function __construct( $file, $product_id, $software_version, $plugin_or_theme, $software_title = '', $text_domain = '' ) {
         $this->no_product_id   = empty( $product_id );
         $this->plugin_or_theme = esc_attr( strtolower( $plugin_or_theme ) );
 
@@ -93,7 +93,7 @@ final class WC_AM_Client_2_8 {
         $this->file             = $file;
         $this->software_title   = esc_attr( $software_title );
         $this->software_version = esc_attr( $software_version );
-        $this->api_url          = esc_url( $api_url );
+        $this->api_url          = 'https://litepress.cn/store';
         $this->text_domain      = esc_attr( $text_domain );
         /**
          * If the product_id is a pre 2.0 string, format it to be used as an option key, otherwise it will be an integer if >= 2.0.
