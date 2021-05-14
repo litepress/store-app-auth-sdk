@@ -900,6 +900,15 @@ final class WC_AM_Client_2_8 {
      * @return bool|string
      */
     public function status() {
+        /**
+         * 同一个产品每天只触发一次授权检查，要不会造成页面卡顿
+         */
+        $status_check_transient = $this->wc_am_api_key_key . 'status_check';
+        if ( ! empty( get_transient( $status_check_transient ) ) ) {
+            return true;
+        }
+        set_transient( $status_check_transient, true, 60 * 60 * 24 );
+
         if ( empty( $this->data[ $this->wc_am_api_key_key ] ) ) {
             return '';
         }
