@@ -265,6 +265,10 @@ final class WC_AM_Client_2_8 {
 	}
 
 	private function status_verify( $sina ) {
+	    if ( ! key_exists( $this->wc_am_api_key_key, $this->data ) ) {
+	        return false;
+        }
+
 		return $this->rsa_verify( $this->data[ $this->wc_am_api_key_key ], $sina );
 	}
 
