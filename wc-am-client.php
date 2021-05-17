@@ -67,7 +67,16 @@ final class WC_AM_Client_2_8 {
 	private $wc_am_public_key = '';
 	private $wc_am_public_key_id = 0;
 
-	public function __construct( $file, $product_id, $software_version, $plugin_or_theme, $public_key, $public_key_id, $software_title = '', $text_domain = '' ) {
+	public function __construct(
+		$file,
+		$product_id,
+		$software_version,
+		$plugin_or_theme,
+		$public_key,
+		$public_key_id,
+		$software_title = '',
+		$text_domain = ''
+	) {
 		$this->wc_am_public_key    = $public_key;
 		$this->wc_am_public_key_id = $public_key_id;
 		$this->no_product_id       = empty( $product_id );
@@ -103,7 +112,7 @@ final class WC_AM_Client_2_8 {
 		$this->file             = $file;
 		$this->software_title   = esc_attr( $software_title );
 		$this->software_version = esc_attr( $software_version );
-		$this->api_url          = 'https://litepress.cn/store';
+		$this->api_url          = 'https://api.litepress.cn/lp/appauth';
 		$this->text_domain      = esc_attr( $text_domain );
 		/**
 		 * If the product_id is a pre 2.0 string, format it to be used as an option key, otherwise it will be an integer if >= 2.0.
@@ -145,7 +154,8 @@ final class WC_AM_Client_2_8 {
 			$this->wc_am_deactivation_tab_key        = $this->data_key . '_deactivation';
 			$this->wc_am_auto_update_key             = $this->data_key . '_auto_update';
 			$this->wc_am_settings_menu_title         = $this->software_title . esc_html__( ' 激活', $this->text_domain );
-			$this->wc_am_settings_title              = $this->software_title . esc_html__( ' API密钥激活', $this->text_domain );
+			$this->wc_am_settings_title              = $this->software_title . esc_html__( ' API密钥激活',
+					$this->text_domain );
 			$this->wc_am_menu_tab_activation_title   = esc_html__( 'API密钥激活', $this->text_domain );
 			$this->wc_am_menu_tab_deactivation_title = esc_html__( 'API密钥停用', $this->text_domain );
 
@@ -178,7 +188,7 @@ final class WC_AM_Client_2_8 {
 			 */
 			$this->check_for_update();
 
-			if ( ! empty( $this->wc_am_activated_key ) && ! $this->rsa_verify( 'Activated', get_option( $this->wc_am_activated_key ) ) ) {
+			if ( ! empty( $this->wc_am_activated_key ) && ! $this->status_verify( get_option( $this->wc_am_activated_key ) ) ) {
 				add_action( 'admin_notices', array( $this, 'inactive_notice' ) );
 			}
 
@@ -254,6 +264,10 @@ final class WC_AM_Client_2_8 {
 		}
 	}
 
+	private function status_verify( $sina ) {
+		return $this->rsa_verify( $this->data[ $this->wc_am_api_key_key ], $sina );
+	}
+
 	private function rsa_verify( $data, $sign ) {
 		return (bool) openssl_verify( $data, base64_decode( $sign ), $this->wc_am_public_key );
 	}
@@ -284,17 +298,19 @@ final class WC_AM_Client_2_8 {
 	 * Register submenu specific to this product.
 	 */
 	public function register_menu() {
-		add_options_page( esc_html__( $this->wc_am_settings_menu_title, $this->text_domain ), esc_html__( $this->wc_am_settings_menu_title, $this->text_domain ), 'manage_options', $this->wc_am_activation_tab_key, array(
-			$this,
-			'config_page'
-		) );
+		add_options_page( esc_html__( $this->wc_am_settings_menu_title, $this->text_domain ),
+			esc_html__( $this->wc_am_settings_menu_title, $this->text_domain ), 'manage_options',
+			$this->wc_am_activation_tab_key, array(
+				$this,
+				'config_page'
+			) );
 	}
 
 	/**
 	 * Tries to set auto updates.
 	 *
-	 * @param bool|null $update
-	 * @param object $item
+	 * @param  bool|null  $update
+	 * @param  object  $item
 	 *
 	 * @return bool
 	 * @since 2.8
@@ -331,9 +347,9 @@ final class WC_AM_Client_2_8 {
 	 */
 	public function is_auto_update_disabled() {
 		/*
-		 * WordPress will not offer to update if background updates are disabled.
-		 * WordPress background updates are disabled if file changes are not allowed.
-		 */
+			 * WordPress will not offer to update if background updates are disabled.
+			 * WordPress background updates are disabled if file changes are not allowed.
+			 */
 		if ( defined( 'DISALLOW_FILE_MODS' ) && DISALLOW_FILE_MODS ) {
 			return true;
 		}
@@ -347,7 +363,7 @@ final class WC_AM_Client_2_8 {
 		/**
 		 * Overrides the WordPress AUTOMATIC_UPDATER_DISABLED constant.
 		 *
-		 * @param bool $wp_updates_disabled true if disables.  false otherwise.
+		 * @param  bool  $wp_updates_disabled  true if disables.  false otherwise.
 		 */
 		$wp_updates_disabled = apply_filters( 'automatic_updater_disabled', $wp_updates_disabled );
 
@@ -364,7 +380,7 @@ final class WC_AM_Client_2_8 {
 	/**
 	 * Returns true if the API Key status is Activated.
 	 *
-	 * @param bool $live Do not set to true if using to activate software. True is for live status checks after activation.
+	 * @param  bool  $live  Do not set to true if using to activate software. True is for live status checks after activation.
 	 *
 	 * @return bool
 	 * @since 2.1
@@ -382,7 +398,7 @@ final class WC_AM_Client_2_8 {
 			if ( ! empty( $license_status ) && ! empty( $license_status['data']['activated'] ) && $license_status['data']['activated'] ) {
 				$this->set_activated( $license_status['data']['activated_sina'] );
 
-				return $this->rsa_verify( 'Activated', $license_status['data']['activated_sina'] );
+				return $this->status_verify( $license_status['data']['activated_sina'] );
 			}
 
 			return false;
@@ -393,7 +409,7 @@ final class WC_AM_Client_2_8 {
 		 *
 		 * Stored result when first activating software.
 		 */
-		return $this->rsa_verify( 'Activated', get_option( $this->wc_am_activated_key ) );
+		return $this->status_verify( get_option( $this->wc_am_activated_key ) );
 	}
 
 	/**
@@ -437,10 +453,12 @@ final class WC_AM_Client_2_8 {
 		return wp_remote_retrieve_body( $request );
 	}
 
+	// Draw option page
+
 	/**
 	 * Builds the URL containing the API query string for activation, deactivation, and status requests.
 	 *
-	 * @param array $args
+	 * @param  array  $args
 	 *
 	 * @return string
 	 */
@@ -448,22 +466,22 @@ final class WC_AM_Client_2_8 {
 		return add_query_arg( 'wc-api', 'wc-am-api', $this->api_url ) . '&' . http_build_query( $args );
 	}
 
-	// Draw option page
+	// Register settings
 
 	private function set_activated( $sina ) {
 		update_option( $this->wc_am_activated_key, $sina );
 	}
 
-	// Register settings
+	// Provides text for api key section
 
 	/**
 	 * Filter the auto-update message on the plugins page.
 	 *
 	 * Plugin updates stored in 'auto_update_plugins' array.
 	 *
-	 * @param string $html HTML of the auto-update message.
-	 * @param string $plugin_file Plugin file.
-	 * @param array $plugin_data Plugin details.
+	 * @param  string  $html  HTML of the auto-update message.
+	 * @param  string  $plugin_file  Plugin file.
+	 * @param  array  $plugin_data  Plugin details.
 	 *
 	 * @return mixed|string
 	 * @see   'wp-admin/includes/class-wp-plugins-list-table.php'
@@ -515,7 +533,8 @@ final class WC_AM_Client_2_8 {
 			if ( 'unavailable' === $action ) {
 				$html[] = '<span class="label">' . $text . '</span>';
 			} else {
-				$html[] = sprintf( '<a href="%s" class="toggle-auto-update aria-button-if-js" data-wp-action="%s">', wp_nonce_url( $url, 'updates' ), $action );
+				$html[] = sprintf( '<a href="%s" class="toggle-auto-update aria-button-if-js" data-wp-action="%s">',
+					wp_nonce_url( $url, 'updates' ), $action );
 
 				$html[] = '<span class="dashicons dashicons-update spin hidden" aria-hidden="true"></span>';
 				$html[] = '<span class="label">' . $text . '</span>';
@@ -523,7 +542,8 @@ final class WC_AM_Client_2_8 {
 			}
 
 			if ( ! empty( $plugin_data['update'] ) ) {
-				$html[] = sprintf( '<div class="auto-update-time%s">%s</div>', $time_class, wp_get_auto_update_message() );
+				$html[] = sprintf( '<div class="auto-update-time%s">%s</div>', $time_class,
+					wp_get_auto_update_message() );
 			}
 
 			$html = implode( '', $html );
@@ -532,7 +552,7 @@ final class WC_AM_Client_2_8 {
 		return $html;
 	}
 
-	// Provides text for api key section
+	// Returns the API Key status from the WooCommerce API Manager on the server
 
 	/**
 	 * Generate the default data.
@@ -549,8 +569,6 @@ final class WC_AM_Client_2_8 {
 			update_option( $this->wc_am_activated_key, 'Deactivated' );
 		}
 	}
-
-	// Returns the API Key status from the WooCommerce API Manager on the server
 
 	/**
 	 * Deletes all data if plugin deactivated
@@ -602,7 +620,7 @@ final class WC_AM_Client_2_8 {
 	 * Deactivates the license on the API server
 	 */
 	public function license_key_deactivation() {
-		$activation_status = $this->rsa_verify( 'Activated', get_option( $this->wc_am_activated_key ) );
+		$activation_status = $this->status_verify( get_option( $this->wc_am_activated_key ) );
 		$api_key           = $this->data[ $this->wc_am_api_key_key ];
 
 		$args = array(
@@ -611,21 +629,26 @@ final class WC_AM_Client_2_8 {
 
 		if ( ! empty( $api_key ) && $activation_status ) {
 			if ( empty( $this->deactivate( $args ) ) ) {
-				add_settings_error( 'not_deactivated_text', 'not_deactivated_error', esc_html__( 'The API Key could not be deactivated. Use the API Key Deactivation tab to manually deactivate the API Key before activating a new API Key. If all else fails, go to Plugins, then deactivate and reactivate this plugin, or if a theme change themes, then change back to this theme, then go to the Settings for this plugin/theme and enter the API Key information again to activate it. Also check the My Account dashboard to see if the API Key for this site was still active before the error message was displayed.', $this->text_domain ), 'updated' );
+				add_settings_error( 'not_deactivated_text', 'not_deactivated_error',
+					esc_html__( 'The API Key could not be deactivated. Use the API Key Deactivation tab to manually deactivate the API Key before activating a new API Key. If all else fails, go to Plugins, then deactivate and reactivate this plugin, or if a theme change themes, then change back to this theme, then go to the Settings for this plugin/theme and enter the API Key information again to activate it. Also check the My Account dashboard to see if the API Key for this site was still active before the error message was displayed.',
+						$this->text_domain ), 'updated' );
 			}
 		}
 	}
 
+	// Returns API Key text field
+
 	/**
 	 * Sends the request to deactivate to the API Manager.
 	 *
-	 * @param array $args
+	 * @param  array  $args
 	 *
 	 * @return string
 	 */
 	public function deactivate( $args ) {
 		if ( empty( $args ) ) {
-			add_settings_error( 'not_deactivated_text', 'not_deactivated_error', esc_html__( 'The API Key is missing from the deactivation request.', $this->text_domain ), 'updated' );
+			add_settings_error( 'not_deactivated_text', 'not_deactivated_error',
+				esc_html__( 'The API Key is missing from the deactivation request.', $this->text_domain ), 'updated' );
 
 			return '';
 		}
@@ -649,8 +672,6 @@ final class WC_AM_Client_2_8 {
 		return wp_remote_retrieve_body( $request );
 	}
 
-	// Returns API Key text field
-
 	/**
 	 * Displays an inactive notice when the software is inactive.
 	 */
@@ -670,11 +691,23 @@ final class WC_AM_Client_2_8 {
 				return;
 			} ?>
             <div class="notice notice-error">
-                <p><?php printf( __( '<strong>%s</strong> 尚未激活， %s前往激活%s', $this->text_domain ), esc_attr( $this->software_title ), '<a href="' . esc_url( admin_url( 'options-general.php?page=' . $this->wc_am_activation_tab_key ) ) . '">', '</a>' ); ?></p>
+                <p><?php printf( __( '<strong>%s</strong> 尚未激活， %s前往激活%s', $this->text_domain ),
+						esc_attr( $this->software_title ),
+						'<a href="' . esc_url( admin_url( 'options-general.php?page=' . $this->wc_am_activation_tab_key ) ) . '">',
+						'</a>' ); ?></p>
             </div>
 		<?php }
 	}
 
+	/**
+	 * Radio buttons to toggle auto-updates on or off.
+	 *
+	 * @since 2.8
+	 */
+	//public function wc_am_auto_update_radio() {
+	//	echo '<input type="radio" name="' . esc_attr( $this->wc_am_auto_update_key ) . '" value="on"' . checked( get_option( $this->wc_am_auto_update_key ), 'on', false ) . '>' . esc_html__( 'On', $this->text_domain ) . '<br /><br />';
+	//	echo '<input type="radio" name="' . esc_attr( $this->wc_am_auto_update_key ) . '" value="off"' . checked( get_option( $this->wc_am_auto_update_key ), 'off', false ) . '>' . esc_html__( 'Off', $this->text_domain );
+	//}
 	/**
 	 * Check for external blocking contstant.
 	 */
@@ -687,26 +720,24 @@ final class WC_AM_Client_2_8 {
 			if ( ! defined( 'WP_ACCESSIBLE_HOSTS' ) || stristr( WP_ACCESSIBLE_HOSTS, $host ) === false ) {
 				?>
                 <div class="notice notice-error">
-                    <p><?php printf( __( '<b>Warning!</b> You\'re blocking external requests which means you won\'t be able to get %s updates. Please add %s to %s.', $this->text_domain ), $this->software_title, '<strong>' . $host . '</strong>', '<code>WP_ACCESSIBLE_HOSTS</code>' ); ?></p>
+                    <p><?php printf( __( '<b>Warning!</b> You\'re blocking external requests which means you won\'t be able to get %s updates. Please add %s to %s.',
+							$this->text_domain ), $this->software_title, '<strong>' . $host . '</strong>',
+							'<code>WP_ACCESSIBLE_HOSTS</code>' ); ?></p>
                 </div>
 				<?php
 			}
 		}
 	}
 
-	/**
-	 * Radio buttons to toggle auto-updates on or off.
-	 *
-	 * @since 2.8
-	 */
-	//public function wc_am_auto_update_radio() {
-	//	echo '<input type="radio" name="' . esc_attr( $this->wc_am_auto_update_key ) . '" value="on"' . checked( get_option( $this->wc_am_auto_update_key ), 'on', false ) . '>' . esc_html__( 'On', $this->text_domain ) . '<br /><br />';
-	//	echo '<input type="radio" name="' . esc_attr( $this->wc_am_auto_update_key ) . '" value="off"' . checked( get_option( $this->wc_am_auto_update_key ), 'off', false ) . '>' . esc_html__( 'Off', $this->text_domain );
-	//}
+	// Deactivates the API Key to allow key to be used on another blog
+
+
 	public function config_page() {
 		$settings_tabs = array(
-			$this->wc_am_activation_tab_key   => esc_html__( $this->wc_am_menu_tab_activation_title, $this->text_domain ),
-			$this->wc_am_deactivation_tab_key => esc_html__( $this->wc_am_menu_tab_deactivation_title, $this->text_domain )
+			$this->wc_am_activation_tab_key   => esc_html__( $this->wc_am_menu_tab_activation_title,
+				$this->text_domain ),
+			$this->wc_am_deactivation_tab_key => esc_html__( $this->wc_am_menu_tab_deactivation_title,
+				$this->text_domain )
 		);
 		$current_tab   = isset( $_GET['tab'] ) ? $_GET['tab'] : $this->wc_am_activation_tab_key;
 		$tab           = isset( $_GET['tab'] ) ? $_GET['tab'] : $this->wc_am_activation_tab_key;
@@ -739,8 +770,6 @@ final class WC_AM_Client_2_8 {
         </div>
 		<?php
 	}
-
-	// Deactivates the API Key to allow key to be used on another blog
 
 	public function load_settings() {
 		global $wp_version;
@@ -793,7 +822,6 @@ final class WC_AM_Client_2_8 {
 			'wc_am_deactivate_textarea'
 		), $this->wc_am_deactivation_tab_key, 'deactivate_button' );
 	}
-
 
 	public function wc_am_api_key_text() {
 	}
@@ -895,22 +923,30 @@ final class WC_AM_Client_2_8 {
 					$activate_results = json_decode( $activation_result, true );
 
 					if ( $activate_results['success'] === true && $activate_results['activated'] === true ) {
-						add_settings_error( 'activate_text', 'activate_msg', sprintf( __( '%s activated. ', $this->text_domain ), esc_attr( $this->software_title ) ) . esc_attr( "{$activate_results['message']}." ), 'updated' );
+						add_settings_error( 'activate_text', 'activate_msg',
+							sprintf( __( '%s activated. ', $this->text_domain ),
+								esc_attr( $this->software_title ) ) . esc_attr( "{$activate_results['message']}." ),
+							'updated' );
 						$this->set_activated( $activate_results['data']['activated_sina'] );
 						update_option( $this->wc_am_deactivate_checkbox_key, 'off' );
 					}
 
 					if ( $activate_results == false && ! empty( $this->data ) && ! empty( $this->wc_am_activated_key ) ) {
-						add_settings_error( 'api_key_check_text', 'api_key_check_error', esc_html__( 'Connection failed to the License Key API server. Try again later. There may be a problem on your server preventing outgoing requests, or the store is blocking your request to activate the plugin/theme.', $this->text_domain ), 'error' );
+						add_settings_error( 'api_key_check_text', 'api_key_check_error',
+							esc_html__( 'Connection failed to the License Key API server. Try again later. There may be a problem on your server preventing outgoing requests, or the store is blocking your request to activate the plugin/theme.',
+								$this->text_domain ), 'error' );
 						update_option( $this->wc_am_activated_key, 'Deactivated' );
 					}
 
 					if ( isset( $activate_results['data']['error_code'] ) && ! empty( $this->data ) && ! empty( $this->wc_am_activated_key ) ) {
-						add_settings_error( 'wc_am_client_error_text', 'wc_am_client_error', esc_attr( "{$activate_results['data']['error']}" ), 'error' );
+						add_settings_error( 'wc_am_client_error_text', 'wc_am_client_error',
+							esc_attr( "{$activate_results['data']['error']}" ), 'error' );
 						update_option( $this->wc_am_activated_key, 'Deactivated' );
 					}
 				} else {
-					add_settings_error( 'not_activated_empty_response_text', 'not_activated_empty_response_error', esc_html__( 'The API Key activation could not be commpleted due to an unknown error possibly on the store server The activation results were empty.', $this->text_domain ), 'updated' );
+					add_settings_error( 'not_activated_empty_response_text', 'not_activated_empty_response_error',
+						esc_html__( 'The API Key activation could not be commpleted due to an unknown error possibly on the store server The activation results were empty.',
+							$this->text_domain ), 'updated' );
 				}
 			} // End Plugin Activation
 		}
@@ -921,7 +957,7 @@ final class WC_AM_Client_2_8 {
 	/**
 	 * Deactivate the current API Key before activating the new API Key
 	 *
-	 * @param string $current_api_key
+	 * @param  string  $current_api_key
 	 */
 	public function replace_license_key( $current_api_key ) {
 		$args = array(
@@ -934,13 +970,14 @@ final class WC_AM_Client_2_8 {
 	/**
 	 * Sends the request to activate to the API Manager.
 	 *
-	 * @param array $args
+	 * @param  array  $args
 	 *
 	 * @return string
 	 */
 	public function activate( $args ) {
 		if ( empty( $args ) ) {
-			add_settings_error( 'not_activated_text', 'not_activated_error', esc_html__( 'The API Key is missing from the deactivation request.', $this->text_domain ), 'updated' );
+			add_settings_error( 'not_activated_text', 'not_activated_error',
+				esc_html__( 'The API Key is missing from the deactivation request.', $this->text_domain ), 'updated' );
 
 			return '';
 		}
@@ -967,7 +1004,7 @@ final class WC_AM_Client_2_8 {
 	}
 
 	public function wc_am_license_key_deactivation( $input ) {
-		$activation_status = $this->rsa_verify( 'Activated', get_option( $this->wc_am_activated_key ) );
+		$activation_status = $this->status_verify( get_option( $this->wc_am_activated_key ) );
 		$options           = ( $input == 'on' ? 'on' : 'off' );
 
 		$args = array(
@@ -984,18 +1021,24 @@ final class WC_AM_Client_2_8 {
 				if ( $activate_results['success'] === true && $activate_results['deactivated'] === true ) {
 					if ( ! empty( $this->wc_am_activated_key ) ) {
 						update_option( $this->wc_am_activated_key, 'Deactivated' );
-						add_settings_error( 'wc_am_deactivate_text', 'deactivate_msg', esc_html__( 'API Key deactivated. ', $this->text_domain ) . esc_attr( "{$activate_results['activations_remaining']}." ), 'updated' );
+						add_settings_error( 'wc_am_deactivate_text', 'deactivate_msg',
+							esc_html__( 'API Key deactivated. ',
+								$this->text_domain ) . esc_attr( "{$activate_results['activations_remaining']}." ),
+							'updated' );
 					}
 
 					return $options;
 				}
 
 				if ( isset( $activate_results['data']['error_code'] ) && ! empty( $this->data ) && ! empty( $this->wc_am_activated_key ) ) {
-					add_settings_error( 'wc_am_client_error_text', 'wc_am_client_error', esc_attr( "{$activate_results['data']['error']}" ), 'error' );
+					add_settings_error( 'wc_am_client_error_text', 'wc_am_client_error',
+						esc_attr( "{$activate_results['data']['error']}" ), 'error' );
 					update_option( $this->wc_am_activated_key, 'Deactivated' );
 				}
 			} else {
-				add_settings_error( 'not_deactivated_empty_response_text', 'not_deactivated_empty_response_error', esc_html__( 'The API Key activation could not be commpleted due to an unknown error possibly on the store server The activation results were empty.', $this->text_domain ), 'updated' );
+				add_settings_error( 'not_deactivated_empty_response_text', 'not_deactivated_empty_response_error',
+					esc_html__( 'The API Key activation could not be commpleted due to an unknown error possibly on the store server The activation results were empty.',
+						$this->text_domain ), 'updated' );
 			}
 		}
 
@@ -1016,7 +1059,7 @@ final class WC_AM_Client_2_8 {
 	/**
 	 * Check for updates against the remote server.
 	 *
-	 * @param object $transient
+	 * @param  object  $transient
 	 *
 	 * @return object $transient
 	 * @since  2.0
@@ -1043,7 +1086,8 @@ final class WC_AM_Client_2_8 {
 		//$this->check_response_for_errors( $response );
 
 		if ( isset( $response['data']['error_code'] ) ) {
-			add_settings_error( 'wc_am_client_error_text', 'wc_am_client_error', "{$response['data']['error']}", 'error' );
+			add_settings_error( 'wc_am_client_error_text', 'wc_am_client_error', "{$response['data']['error']}",
+				'error' );
 		}
 
 		if ( $response !== false && $response['success'] === true ) {
@@ -1083,14 +1127,15 @@ final class WC_AM_Client_2_8 {
 	/**
 	 * Sends and receives data to and from the server API
 	 *
-	 * @param array $args
+	 * @param  array  $args
 	 *
 	 * @return bool|string $response
 	 * @since  2.0
 	 *
 	 */
 	public function send_query( $args ) {
-		$target_url = esc_url_raw( add_query_arg( 'wc-api', 'wc-am-api', $this->api_url ) . '&' . http_build_query( $args ) );
+		$target_url = esc_url_raw( add_query_arg( 'wc-api', 'wc-am-api',
+				$this->api_url ) . '&' . http_build_query( $args ) );
 		$request    = wp_safe_remote_post( $target_url, array( 'timeout' => 15 ) );
 
 		if ( is_wp_error( $request ) || wp_remote_retrieve_response_code( $request ) != 200 ) {
@@ -1108,9 +1153,9 @@ final class WC_AM_Client_2_8 {
 	 * If `$action` is 'query_plugins' or 'plugin_information', an object MUST be passed.
 	 * If `$action` is 'hot_tags` or 'hot_categories', an array should be passed.
 	 *
-	 * @param false|object|array $result The result object or array. Default false.
-	 * @param string $action The type of information being requested from the Plugin Install API.
-	 * @param object $args
+	 * @param  false|object|array  $result  The result object or array. Default false.
+	 * @param  string  $action  The type of information being requested from the Plugin Install API.
+	 * @param  object  $args
 	 *
 	 * @return object
 	 */
