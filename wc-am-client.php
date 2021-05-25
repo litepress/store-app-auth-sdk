@@ -405,6 +405,8 @@ final class WC_AM_Client_2_8 {
 				return $this->status_verify( $license_status['data']['activated_sina'] );
 			}
 
+			update_option( $this->wc_am_activated_key, 'Deactivated' );
+
 			return false;
 		}
 
